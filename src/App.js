@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Upload, FileText, Zap, Mail, MessageSquare, Download, Clock,
-  User, CheckSquare, Lightbulb, X, Send, Loader2, BookOpen,
-  ChevronRight, Plus, Copy, Check, ArrowLeft, Search, Hash,
-  Calendar, Users, LayoutDashboard, Trash2, ExternalLink, Menu
+  CheckSquare, Lightbulb, X, Send, Loader2, BookOpen,
+  Copy, Check, ArrowLeft, Search, Hash,
+  Calendar, Users, LayoutDashboard
 } from "lucide-react";
 
 /* ─── Design tokens ─────────────────────────────── */
@@ -280,7 +280,6 @@ function InputScreen({ onProcess, savedCount, onShowSaved }) {
 function DashboardScreen({ data, rawText, onChat, onBack, onExport }) {
   const [email, setEmail] = useState(null);
   const [genEmail, setGenEmail] = useState(false);
-  const [emailCopied, setEmailCopied] = useState(false);
   const [activeSection, setActiveSection] = useState("summary");
 
   const generateEmail = async () => {

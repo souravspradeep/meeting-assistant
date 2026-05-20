@@ -2,6 +2,11 @@
 
 > Turn raw meeting notes into structured summaries, action items, decisions, and follow-up emails — powered by Groq (free).
 
+## 🎬 Demo Video
+
+[![Meeting Assistant Demo](https://img.youtube.com/vi/KhBtup5GJ_U/maxresdefault.jpg)](https://www.youtube.com/watch?v=KhBtup5GJ_U)
+
+> Click the thumbnail above to watch the full demo
 ---
 
 ## ✨ Features

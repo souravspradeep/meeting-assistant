@@ -1,0 +1,55 @@
+{
+  "meeting_title": "Product Team Sync — Q2 Review",
+  "meeting_date": "June 12, 2025",
+  "participants": [
+    "Sarah Chen",
+    "Marcus Webb",
+    "Priya Nair",
+    "Tom Okafor"
+  ],
+  "summary": "The product team met to review Q2 OKR progress, currently at 78% completion with three weeks remaining. Key discussions covered a payment gateway refactor blocked on Stripe API documentation, a simplified onboarding flow design, and three critical checkout bugs requiring immediate prioritization. The team aligned on postponing dark mode to Q4 and agreed to introduce weekly bug triage sessions starting next Monday.",
+  "action_items": [
+    {
+      "description": "Reach out to Stripe support for payment gateway API documentation",
+      "assignee": "Marcus Webb",
+      "deadline": "EOD today"
+    },
+    {
+      "description": "Update Figma prototype for onboarding Step 3 with optional fields removed",
+      "assignee": "Priya Nair",
+      "deadline": "Wednesday"
+    },
+    {
+      "description": "Assign cart persistence bug to Lisa Huang for fix",
+      "assignee": "Marcus Webb",
+      "deadline": "Today"
+    },
+    {
+      "description": "Deliver fix for cart persistence on refresh bug",
+      "assignee": "Lisa Huang",
+      "deadline": "Thursday"
+    },
+    {
+      "description": "Submit Q3 roadmap team updates to Sarah",
+      "assignee": "Unassigned",
+      "deadline": "June 18"
+    },
+    {
+      "description": "Send calendar invites for weekly bug triage meetings",
+      "assignee": "Sarah Chen",
+      "deadline": null
+    }
+  ],
+  "decisions": [
+    "Remove optional fields from onboarding Step 3 to simplify the user flow",
+    "Postpone dark mode feature to Q4 to focus engineering capacity on checkout stability",
+    "Introduce weekly bug triage meetings starting next Monday at 10am"
+  ],
+  "key_topics": [
+    "Q2 OKR progress",
+    "Payment gateway refactor",
+    "Onboarding flow redesign",
+    "Checkout bug triage",
+    "Q3 roadmap planning"
+  ]
+}

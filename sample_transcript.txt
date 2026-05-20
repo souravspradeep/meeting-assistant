@@ -1,0 +1,21 @@
+Product Team Sync — June 12, 2025
+Attendees: Sarah Chen (PM), Marcus Webb (Eng Lead), Priya Nair (Design), Tom Okafor (QA)
+
+Sarah opened the meeting by reviewing Q2 OKRs. The team is at 78% completion with 3 weeks remaining.
+
+Marcus mentioned the payment gateway refactor is blocked on the third-party API documentation. He'll reach out to Stripe support by EOD today and expects a response within 48 hours.
+
+Priya shared the new onboarding flow designs. After discussion, the team decided to simplify Step 3 by removing the optional fields. Priya will update the Figma prototype by Wednesday and share with the team for review.
+
+Tom reported 3 critical bugs in the checkout flow: cart persistence on refresh, coupon code validation, and the mobile keyboard overlay issue. He asked Marcus to prioritize the cart bug as it's blocking QA sign-off.
+
+Marcus agreed and will assign the cart bug to Lisa Huang today. Lisa should have a fix by Thursday.
+
+Sarah announced the Q3 roadmap review is scheduled for June 20. Everyone should submit their team updates to Sarah by June 18.
+
+Decisions made:
+- Remove optional fields from onboarding Step 3
+- Postpone dark mode feature to Q4 to focus on checkout stability
+- Weekly bug triage meetings will start next Monday at 10am
+
+Next steps were confirmed. Sarah will send calendar invites for the triage meetings.

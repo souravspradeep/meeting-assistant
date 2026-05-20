@@ -111,7 +111,7 @@ The app calls Groq's API which is OpenAI-compatible. Here's the core function:
 
 ```js
 // src/App.jsx
-async function callClaude(messages, system) {
+async function callGroq(messages, system) {
   const allMessages = system
     ? [{ role: "system", content: system }, ...messages]
     : messages;

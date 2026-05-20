@@ -35,7 +35,7 @@ const s = {
 };
 
 /* ─── API helper ─────────────────────────────────── */
-async function callClaude(messages, system) {
+async function callGroq(messages, system) {
   // Groq uses OpenAI-compatible format
   const allMessages = system
     ? [{ role: "system", content: system }, ...messages]
@@ -177,7 +177,7 @@ function InputScreen({ onProcess, savedCount, onShowSaved }) {
     if (!text.trim()) return;
     setProcessing(true); setError(null);
     try {
-      const raw = await callClaude([{ role: "user", content: `Analyze this meeting:\n\n${text}` }], EXTRACT_SYSTEM);
+      const raw = await callGroq([{ role: "user", content: `Analyze this meeting:\n\n${text}` }], EXTRACT_SYSTEM);
       const json = JSON.parse(raw.replace(/```json\n?|\n?```/g, "").trim());
       onProcess(json, text);
     } catch (e) {
@@ -291,7 +291,7 @@ Summary: ${data.summary}
 Action items: ${data.action_items.map(a => `${a.description} (${a.assignee}${a.deadline ? `, due ${a.deadline}` : ""})`).join("; ")}
 Decisions: ${data.decisions.join("; ")}
 Write a professional follow-up email.`;
-      const result = await callClaude([{ role: "user", content: prompt }], EMAIL_SYSTEM);
+      const result = await callGroq([{ role: "user", content: prompt }], EMAIL_SYSTEM);
       setEmail(result);
     } catch { setEmail("Failed to generate email. Please try again."); }
     finally { setGenEmail(false); }
@@ -520,7 +520,7 @@ Answer questions specifically about this meeting. Be concise, direct, and helpfu
     setLoading(true);
     try {
       const apiMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
-      const reply = await callClaude(apiMsgs, CHAT_SYSTEM);
+      const reply = await callGroq(apiMsgs, CHAT_SYSTEM);
       setMsgs([...newMsgs, { role: "assistant", content: reply }]);
     } catch {
       setMsgs([...newMsgs, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);

@@ -190,14 +190,12 @@ function InputScreen({ onProcess, savedCount, onShowSaved }) {
       {/* Header */}
       <div style={{ marginBottom: 40, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: C.accentBg, border: `1px solid ${C.accent}40`,
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentBg, border: `1px solid ${C.accent}40`,
               display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Zap size={18} color={C.accent} />
+              <Zap size={22} color={C.accent} />
             </div>
-            <span style={{ fontSize: 13, color: C.muted, fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Meeting Assistant
-            </span>
+            <span style={{ fontSize: 22, color: C.muted, fontWeight: 800, letterSpacing: "0.02em"}}>Meeting Assistant</span>
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 700, margin: 0, color: C.text, lineHeight: 1.2 }}>
             Turn meeting chaos<br />into clear action

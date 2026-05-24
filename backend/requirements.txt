@@ -1,6 +1,7 @@
 flask
 flask-cors
-pymongo
+pymongo[srv]
 requests
 python-dotenv
 gunicorn
+certifi

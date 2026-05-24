@@ -34,60 +34,61 @@ const s = {
   tag:    { background: C.accentBg, color: C.accent, borderRadius: 6, fontSize: 11, fontWeight: 600, padding: "3px 8px", display: "inline-block", letterSpacing: "0.04em", textTransform: "uppercase" },
 };
 
-/* ─── API helper ─────────────────────────────────── */
-async function callGroq(messages, system) {
-  // Groq uses OpenAI-compatible format
-  const allMessages = system
-    ? [{ role: "system", content: system }, ...messages]
-    : messages;
+/* ─── API Base URL ───────────────────────────────── */
+// In development: points to Flask server at localhost:5001
+// In production: points to your deployed backend URL
+const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5001/api";
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+/* ─── Backend API helpers ────────────────────────── */
+
+// Analyze a meeting transcript
+async function analyzeTranscript(text) {
+  const res = await fetch(`${API_BASE}/meetings/analyze`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.REACT_APP_GROQ_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: allMessages,
-      max_tokens: 1000,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcript: text }),
   });
+  if (!res.ok) throw new Error("API " + res.status);
+  return res.json(); // returns parsed JSON meeting data
+}
 
+// Generate follow-up email
+async function generateEmailAPI(meeting) {
+  const res = await fetch(`${API_BASE}/meetings/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meeting }),
+  });
   if (!res.ok) throw new Error("API " + res.status);
   const d = await res.json();
-  return d.choices[0].message.content;
+  return d.email;
 }
 
-const EXTRACT_SYSTEM = `You are a precise meeting analyst. Extract structured data from meeting notes or transcripts.
-
-Return ONLY valid JSON — no markdown, no preamble — matching exactly:
-{
-  "meeting_title": "concise inferred title",
-  "meeting_date": "date string or null",
-  "participants": ["name1", "name2"],
-  "summary": "3-4 sentence overview covering purpose, key topics, and outcomes",
-  "action_items": [
-    { "description": "clear task", "assignee": "Name or Unassigned", "deadline": "natural language deadline or null" }
-  ],
-  "decisions": ["decision statement 1", "decision statement 2"],
-  "key_topics": ["topic1", "topic2", "topic3"]
+// Chat with meeting data
+async function sendChatAPI(messages, transcript, meetingData) {
+  const res = await fetch(`${API_BASE}/chat/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, transcript, meetingData }),
+  });
+  if (!res.ok) throw new Error("API " + res.status);
+  const d = await res.json();
+  return d.reply;
 }
 
-Assignee extraction rules:
-- "John will handle X" → assignee: "John"
-- "Action: Sarah to complete Y by Friday" → assignee: "Sarah", deadline: "Friday"
-- "@alice review the doc" → assignee: "Alice"
-- No clear owner → assignee: "Unassigned"
-- Extract dates/times as-is from text ("by EOD", "next Monday", "Q3 2025")`;
+// Get all saved meetings from MongoDB (with optional search query)
+async function getSavedMeetings(query = "") {
+  const res = await fetch(`${API_BASE}/meetings?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("API " + res.status);
+  return res.json();
+}
 
-const EMAIL_SYSTEM = `You are a professional business writer. Generate a crisp follow-up email.
-Format exactly as:
-Subject: [subject line]
-
-[email body]
-
-Keep it under 200 words, professional, action-oriented.`;
+// Delete a saved meeting
+async function deleteMeetingAPI(id) {
+  const res = await fetch(`${API_BASE}/meetings/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("API " + res.status);
+  return res.json();
+}
 
 /* ─── Sample transcript ──────────────────────────── */
 const SAMPLE = `Product Team Sync — June 12, 2025
@@ -154,7 +155,7 @@ function CopyButton({ text }) {
 }
 
 /* ─── Input Screen ───────────────────────────────── */
-function InputScreen({ onProcess, savedCount, onShowSaved }) {
+function InputScreen({ onProcess, onShowSaved, savedCount }) {
   const [text, setText] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -177,11 +178,11 @@ function InputScreen({ onProcess, savedCount, onShowSaved }) {
     if (!text.trim()) return;
     setProcessing(true); setError(null);
     try {
-      const raw = await callGroq([{ role: "user", content: `Analyze this meeting:\n\n${text}` }], EXTRACT_SYSTEM);
-      const json = JSON.parse(raw.replace(/```json\n?|\n?```/g, "").trim());
-      onProcess(json, text);
+      // ── CHANGED: now calls Flask backend instead of Groq directly ──
+      const data = await analyzeTranscript(text);
+      onProcess(data, text);
     } catch (e) {
-      setError("Processing failed. Check that the content is readable meeting notes and try again.");
+      setError("Processing failed. Make sure the backend server is running and try again.");
     } finally { setProcessing(false); }
   };
 
@@ -283,12 +284,8 @@ function DashboardScreen({ data, rawText, onChat, onBack, onExport }) {
   const generateEmail = async () => {
     setGenEmail(true);
     try {
-      const prompt = `Meeting: ${data.meeting_title}
-Summary: ${data.summary}
-Action items: ${data.action_items.map(a => `${a.description} (${a.assignee}${a.deadline ? `, due ${a.deadline}` : ""})`).join("; ")}
-Decisions: ${data.decisions.join("; ")}
-Write a professional follow-up email.`;
-      const result = await callGroq([{ role: "user", content: prompt }], EMAIL_SYSTEM);
+      // ── CHANGED: now calls Flask backend instead of Groq directly ──
+      const result = await generateEmailAPI(data);
       setEmail(result);
     } catch { setEmail("Failed to generate email. Please try again."); }
     finally { setGenEmail(false); }
@@ -490,23 +487,13 @@ Write a professional follow-up email.`;
 function ChatScreen({ data, rawText, onBack }) {
   const [msgs, setMsgs] = useState([{
     role: "assistant",
-    content: `Hi! I have full context on **${data.meeting_title || "this meeting"}**. I can answer questions about decisions, explain action items, find details, or help you think through next steps.`
+    content: `Hi! I have full context on ${data.meeting_title || "this meeting"}. I can answer questions about decisions, explain action items, find details, or help you think through next steps.`
   }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
-
-  const CHAT_SYSTEM = `You are a smart meeting assistant with full context on this specific meeting.
-
-Meeting transcript:
-${rawText}
-
-Extracted data:
-${JSON.stringify(data, null, 2)}
-
-Answer questions specifically about this meeting. Be concise, direct, and helpful. Use the raw transcript for details not captured in the extracted data. Format responses clearly.`;
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -516,8 +503,12 @@ Answer questions specifically about this meeting. Be concise, direct, and helpfu
     setInput("");
     setLoading(true);
     try {
-      const apiMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
-      const reply = await callGroq(apiMsgs, CHAT_SYSTEM);
+      // ── CHANGED: now calls Flask backend instead of Groq directly ──
+      // Only send user/assistant messages (not the initial greeting)
+      const apiMsgs = newMsgs
+        .filter(m => !(m.role === "assistant" && newMsgs.indexOf(m) === 0))
+        .map(m => ({ role: m.role, content: m.content }));
+      const reply = await sendChatAPI(apiMsgs, rawText, data);
       setMsgs([...newMsgs, { role: "assistant", content: reply }]);
     } catch {
       setMsgs([...newMsgs, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
@@ -558,7 +549,7 @@ Answer questions specifically about this meeting. Be concise, direct, and helpfu
               color: m.role === "user" ? "#0b0d14" : C.text, borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "4px 14px 14px 14px",
               padding: "12px 16px", fontSize: 14, lineHeight: 1.65, border: m.role === "assistant" ? `1px solid ${C.border}` : "none",
               whiteSpace: "pre-wrap" }}>
-              {m.content.replace(/\*\*(.*?)\*\*/g, '$1')}
+              {m.content}
             </div>
           </div>
         ))}
@@ -578,14 +569,14 @@ Answer questions specifically about this meeting. Be concise, direct, and helpfu
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggestions (show if few messages) */}
+      {/* Suggestions */}
       {msgs.length < 3 && (
         <div style={{ padding: "0 24px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {suggestions.map(s => (
-            <button key={s} onClick={() => setInput(s)}
+          {suggestions.map(sg => (
+            <button key={sg} onClick={() => setInput(sg)}
               style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px",
                 fontSize: 12, color: C.muted, cursor: "pointer", fontFamily: "inherit" }}>
-              {s}
+              {sg}
             </button>
           ))}
         </div>
@@ -615,12 +606,44 @@ Answer questions specifically about this meeting. Be concise, direct, and helpfu
 }
 
 /* ─── Saved Meetings Panel ───────────────────────── */
-function SavedPanel({ meetings, onSelect, onClose }) {
+// ── CHANGED: now loads meetings from MongoDB via Flask backend ──
+function SavedPanel({ onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const filtered = meetings.filter(m =>
-    m.title.toLowerCase().includes(search.toLowerCase()) ||
-    m.data.summary?.toLowerCase().includes(search.toLowerCase())
-  );
+  const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load meetings from backend when panel opens
+  useEffect(() => {
+    loadMeetings();
+  }, []);
+
+  // Search meetings when query changes
+  useEffect(() => {
+    const timer = setTimeout(() => loadMeetings(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const loadMeetings = async (query = "") => {
+    setLoading(true);
+    try {
+      const data = await getSavedMeetings(query);
+      setMeetings(data);
+    } catch {
+      setMeetings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await deleteMeetingAPI(id);
+      setMeetings(prev => prev.filter(m => m._id !== id));
+    } catch {
+      alert("Failed to delete meeting.");
+    }
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex" }}>
@@ -638,23 +661,30 @@ function SavedPanel({ meetings, onSelect, onClose }) {
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 32, fontSize: 13 }}>No meetings found</div>}
-          {filtered.map(m => (
-            <button key={m.id} onClick={() => { onSelect(m); onClose(); }}
+          {loading && <div style={{ textAlign: "center", color: C.muted, padding: 32, fontSize: 13 }}>Loading...</div>}
+          {!loading && meetings.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 32, fontSize: 13 }}>No meetings found</div>}
+          {meetings.map(m => (
+            <div key={m._id} onClick={() => { onSelect(m); onClose(); }}
               style={{ ...s.card, padding: "14px 16px", textAlign: "left", cursor: "pointer", border: `1px solid ${C.border}`,
-                display: "block", width: "100%", fontFamily: "inherit", transition: "border-color 0.15s" }}
+                display: "block", width: "100%", fontFamily: "inherit", transition: "border-color 0.15s", position: "relative" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: C.text, marginBottom: 4 }}>{m.title}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: C.text, marginBottom: 4, paddingRight: 24 }}>{m.meeting_title || "Untitled Meeting"}</div>
               <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, display: "flex", gap: 8 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10}/>{m.date}</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}><CheckSquare size={10}/>{m.data.action_items?.length} tasks</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10}/>{m.meeting_date || "No date"}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 3 }}><CheckSquare size={10}/>{m.action_items?.length || 0} tasks</span>
               </div>
               <p style={{ margin: 0, fontSize: 12, color: C.muted, lineHeight: 1.5, overflow: "hidden",
                 display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                {m.data.summary}
+                {m.summary}
               </p>
-            </button>
+              {/* Delete button */}
+              <button onClick={e => handleDelete(e, m._id)}
+                style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none",
+                  color: C.muted, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+                <X size={12} />
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -664,19 +694,24 @@ function SavedPanel({ meetings, onSelect, onClose }) {
 
 /* ─── Main App ───────────────────────────────────── */
 export default function App() {
-  const [view, setView] = useState("input");      // input | dashboard | chat
+  const [view, setView] = useState("input");
   const [meetingData, setMeetingData] = useState(null);
   const [rawText, setRawText] = useState("");
   const [saved, setSaved] = useState([]);
   const [showSaved, setShowSaved] = useState(false);
 
+  useEffect(() => {
+    getSavedMeetings()
+      .then(meetings => setSaved(meetings))
+      .catch(() => setSaved([]));
+  }, []);
+
   const handleProcess = (data, text) => {
     setMeetingData(data);
     setRawText(text);
-    setSaved(prev => {
-      const entry = { id: Date.now(), title: data.meeting_title || "Meeting", date: data.meeting_date || new Date().toLocaleDateString("en-GB"), data, text };
-      return [entry, ...prev];
-    });
+    getSavedMeetings()
+      .then(meetings => setSaved(meetings))
+      .catch(() => {});
     setView("dashboard");
   };
 
@@ -707,10 +742,21 @@ export default function App() {
     a.click(); URL.revokeObjectURL(url);
   };
 
+  // ── CHANGED: SavedPanel now loads from MongoDB, no local meetings prop needed ──
+  const handleSelectSaved = (m) => {
+    setMeetingData(m);
+    setRawText(m.transcript || "");
+    setView("dashboard");
+  };
+
   return (
     <div style={s.app}>
       {view === "input" && (
-        <InputScreen onProcess={handleProcess} savedCount={saved.length} onShowSaved={() => setShowSaved(true)} />
+        <InputScreen
+          onProcess={handleProcess}
+          savedCount={saved.length}
+          onShowSaved={() => setShowSaved(true)}
+        />
       )}
       {view === "dashboard" && meetingData && (
         <DashboardScreen
@@ -725,7 +771,10 @@ export default function App() {
         <ChatScreen data={meetingData} rawText={rawText} onBack={() => setView("dashboard")} />
       )}
       {showSaved && (
-        <SavedPanel meetings={saved} onSelect={m => { setMeetingData(m.data); setRawText(m.text); setView("dashboard"); }} onClose={() => setShowSaved(false)} />
+        <SavedPanel
+          onSelect={handleSelectSaved}
+          onClose={() => setShowSaved(false)}
+        />
       )}
     </div>
   );

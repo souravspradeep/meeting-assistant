@@ -37,7 +37,7 @@ const s = {
 /* ─── API Base URL ───────────────────────────────── */
 // In development: points to Flask server at localhost:5001
 // In production: points to your deployed backend URL
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5001/api";
+const API_BASE = process.env.REACT_APP_API_BASE || "https://meeting-assistant-vdfu.onrender.com/api";
 
 /* ─── Backend API helpers ────────────────────────── */
 

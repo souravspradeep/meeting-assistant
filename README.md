@@ -1,12 +1,15 @@
 # 🧠 AI Meeting & Workflow Assistant
 
-> Turn raw meeting notes into structured summaries, action items, decisions, and follow-up emails — powered by Groq (free).
+> Turn raw meeting notes into structured summaries, action items, decisions, and follow-up emails — powered by Groq (free) with a Flask + MongoDB backend.
+
+🌐 **Live Demo:** [souravspradeep.github.io/meeting-assistant](https://souravspradeep.github.io/meeting-assistant/)
 
 ## 🎬 Demo Video
 
 [![Meeting Assistant Demo](https://img.youtube.com/vi/KhBtup5GJ_U/maxresdefault.jpg)](https://www.youtube.com/watch?v=KhBtup5GJ_U)
 
 > Click the thumbnail above to watch the full demo
+
 ---
 
 ## ✨ Features
@@ -19,44 +22,100 @@
 | **Follow-up email** | One-click AI-drafted professional email |
 | **Chat** | Conversational Q&A grounded in the meeting transcript |
 | **Markdown export** | Download full structured output as `.md` |
-| **Meeting history** | In-session saved meetings with search |
+| **Meeting history** | Persistent saved meetings with search powered by MongoDB |
 
 ---
 
-## 🚀 Quick Start
+## 🏗 Architecture
+
+```
+Frontend (React)          Backend (Flask)          Database
+github.io/meeting ──────► render.com/api ────────► MongoDB Atlas
+    assistant                  (Groq API)
+```
+
+---
+
+## 🎨 Tech Stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Frontend | React 18 | Component-based, fast development |
+| Icons | lucide-react | Lightweight, consistent |
+| Styling | Inline styles + CSS variables | Zero-config, no Tailwind compiler needed |
+| Backend | Flask (Python) | Lightweight, easy to deploy |
+| LLM | Groq — Llama 3.1 8B Instant | 100% free, fast, reliable |
+| Database | MongoDB Atlas | Free cloud database, persistent storage |
+| Deployment (Frontend) | GitHub Pages + GitHub Actions | Free, automated CI/CD |
+| Deployment (Backend) | Render | Free Flask hosting |
+
+---
+
+## 🚀 Quick Start (Local Development)
 
 ### Prerequisites
-- Node.js ≥ 18 → download at [nodejs.org](https://nodejs.org)
-- A free Groq API key → get one at [console.groq.com](https://console.groq.com) (no credit card needed)
+- Node.js ≥ 18 → [nodejs.org](https://nodejs.org)
+- Python 3.8+ → [python.org](https://python.org)
+- Free Groq API key → [console.groq.com](https://console.groq.com)
+- Free MongoDB Atlas account → [mongodb.com/atlas](https://mongodb.com/atlas)
+
+---
 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/meeting-assistant
+git clone https://github.com/souravspradeep/meeting-assistant
 cd meeting-assistant
 ```
 
-### 2. Install dependencies
+---
+
+### 2. Setup the Backend
 
 ```bash
+cd backend
+pip install -r requirements.txt
+```
+
+Create `backend/.env`:
+
+```bash
+GROQ_API_KEY=gsk_your-actual-key-here
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/meeting_assistant
+```
+
+Start the backend:
+
+```bash
+python app.py
+```
+
+Backend runs at `http://localhost:5001` ✅
+
+---
+
+### 3. Setup the Frontend
+
+Open a new terminal:
+
+```bash
+cd frontend
 npm install
 ```
 
-### 3. Add your Groq API key
-
-Create a `.env` file in the root folder:
+Create `frontend/.env`:
 
 ```bash
-REACT_APP_GROQ_KEY=gsk_your-actual-key-here
+REACT_APP_API_BASE=http://localhost:5001/api
 ```
 
-### 4. Start the app
+Start the frontend:
 
 ```bash
 npm start
 ```
 
-The app opens at `http://localhost:3000`. Click **"Try sample"** then **"Analyze Meeting"** to test it.
+Frontend runs at `http://localhost:3000` ✅
 
 ---
 
@@ -67,132 +126,21 @@ The app opens at `http://localhost:3000`. Click **"Try sample"** then **"Analyze
 3. Click **API Keys** in the left menu
 4. Click **Create API Key**, give it a name
 5. Copy the key (starts with `gsk_...`)
-6. Paste it into your `.env` file as shown above
+6. Paste it into `backend/.env`
 
 **Free tier limits:** 14,400 requests/day — more than enough for any team.
 
 ---
 
-## 🛠 Running from Scratch (Beginner Setup)
+## 🍃 Setting Up MongoDB Atlas (Free)
 
-If you don't have an existing React project:
-
-```bash
-# 1. Create a new React app
-npx create-react-app meeting-assistant
-cd meeting-assistant
-
-# 2. Install the icon library
-npm install lucide-react
-
-# 3. Replace the default App file
-cp MeetingAssistant.jsx src/App.jsx
-
-# 4. Replace src/index.js with this:
-```
-
-```js
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-```
-
-```bash
-# 5. Create your .env file
-echo "REACT_APP_GROQ_KEY=gsk_your-key-here" > .env
-
-# 6. Start
-npm start
-```
-
----
-
-## 🔧 How the API is Set Up
-
-The app calls Groq's API which is OpenAI-compatible. Here's the core function:
-
-```js
-// src/App.jsx
-async function callGroq(messages, system) {
-  const allMessages = system
-    ? [{ role: "system", content: system }, ...messages]
-    : messages;
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.REACT_APP_GROQ_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: allMessages,
-      max_tokens: 1000,
-    }),
-  });
-
-  if (!res.ok) throw new Error("API " + res.status);
-  const d = await res.json();
-  return d.choices[0].message.content;
-}
-```
-
-> ⚠️ Never expose API keys in production client-side code. Use a backend proxy (see below).
-
----
-
-## 🔧 Backend Proxy (Optional — Recommended for Production)
-
-For a deployed public app, keep your API key server-side using a simple Flask proxy:
-
-```bash
-pip install flask requests python-dotenv
-```
-
-```python
-# server.py
-from flask import Flask, request, jsonify
-import os, requests
-from dotenv import load_dotenv
-
-load_dotenv()
-app = Flask(__name__)
-GROQ_KEY = os.getenv("GROQ_API_KEY")
-
-@app.route("/api/chat", methods=["POST"])
-def chat():
-    body = request.json
-    system = body.get("system", "")
-    messages = body["messages"]
-    all_messages = ([{"role": "system", "content": system}] + messages) if system else messages
-
-    res = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_KEY}"},
-        json={
-            "model": "llama-3.1-8b-instant",
-            "messages": all_messages,
-            "max_tokens": 1000
-        }
-    )
-    return jsonify({"text": res.json()["choices"][0]["message"]["content"]})
-
-if __name__ == "__main__":
-    app.run(port=5001)
-```
-
-```bash
-# .env (server side)
-GROQ_API_KEY=gsk_your-actual-key-here
-```
-
-Then update the fetch URL in `App.jsx`:
-```js
-const res = await fetch("http://localhost:5001/api/chat", { ... });
-```
+1. Go to [mongodb.com/atlas](https://mongodb.com/atlas) → Sign up free
+2. Create a free **M0** cluster
+3. Go to **Database Access** → Add a database user
+4. Go to **Network Access** → Allow access from anywhere (`0.0.0.0/0`)
+5. Click **Connect** → **Drivers** → Copy the connection string
+6. Replace `<password>` with your password and add `/meeting_assistant` before the `?`
+7. Paste into `backend/.env` as `MONGO_URI`
 
 ---
 
@@ -200,111 +148,76 @@ const res = await fetch("http://localhost:5001/api/chat", { ... });
 
 ```
 meeting-assistant/
-├── src/
-│   ├── App.jsx                # Full React app (single file)
-│   └── index.js               # React entry point
-├── public/
-│   └── index.html
-├── .env                       # Your Groq API key (never commit this)
-├── .gitignore                 # .env is listed here
+├── frontend/
+│   ├── src/
+│   │   ├── App.js             # Full React app
+│   │   └── index.js           # React entry point
+│   ├── public/
+│   │   └── index.html
+│   ├── .env                   # REACT_APP_API_BASE (never commit)
+│   ├── package.json
+│   └── package-lock.json
+├── backend/
+│   ├── app.py                 # Flask server entry point
+│   ├── routes/
+│   │   ├── meetings.py        # Meeting routes (analyze, email, CRUD)
+│   │   └── chat.py            # Chat route
+│   ├── models/
+│   │   └── meeting.py         # MongoDB model
+│   ├── Procfile               # Render deployment config
+│   ├── requirements.txt       # Python dependencies
+│   └── .env                   # GROQ_API_KEY + MONGO_URI (never commit)
+├── .github/
+│   └── workflows/
+│       └── deploy.yml         # GitHub Actions CI/CD
+├── .gitignore
 ├── README.md
-├── ASSIGNEE_NOTE.md           # Note on assignee extraction handling
-├── sample_output.json         # Example structured JSON output
-├── sample_transcript.txt      # Demo meeting transcript
-└── package.json
+├── ASSIGNEE_NOTE.md
+├── sample_output.json
+└── sample_transcript.txt
 ```
 
 ---
 
-## 🎨 Tech Stack
+## 🔧 How the Backend API Works
 
-| Layer | Choice | Why |
+The Flask backend exposes these endpoints:
+
+| Method | Endpoint | Purpose |
 |---|---|---|
-| Frontend | React 18 (single file) | Simple, no extra config needed |
-| Icons | lucide-react | Lightweight, consistent |
-| Styling | Inline styles + CSS variables | Zero-config, works without Tailwind compiler |
-| LLM | Groq — Llama 3.1 8B Instant | 100% free, fast, reliable |
-| Storage | Component state (in-session) | No backend needed for MVP |
+| `POST` | `/api/meetings/analyze` | Analyze transcript → save to MongoDB → return JSON |
+| `GET` | `/api/meetings/` | Get all saved meetings (with optional search) |
+| `GET` | `/api/meetings/<id>` | Get a single meeting by ID |
+| `DELETE` | `/api/meetings/<id>` | Delete a meeting |
+| `POST` | `/api/meetings/email` | Generate follow-up email |
+| `POST` | `/api/chat/` | Chat with meeting data |
 
 ---
 
-## 🚀 Deploy to GitHub Pages
+## 🚀 Deployment
 
-### 1. Install deploy tool
-```bash
-npm install --save-dev gh-pages
-```
+### Frontend → GitHub Pages
 
-### 2. Update `package.json`
+The frontend is automatically deployed via GitHub Actions on every push to `main`.
 
-Add `homepage` near the top:
-```json
-"homepage": "https://YOUR_USERNAME.github.io/meeting-assistant",
-```
+Add this secret in GitHub → **Settings → Secrets → Actions**:
 
-Add two lines inside `"scripts"`:
-```json
-"scripts": {
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d build",
-  "start": "react-scripts start",
-  "build": "react-scripts build",
-  "test": "react-scripts test",
-  "eject": "react-scripts eject"
-}
-```
+| Secret | Value |
+|---|---|
+| `REACT_APP_API_BASE` | `https://your-render-url.onrender.com/api` |
 
-### 3. Add your key as a GitHub Secret
+### Backend → Render
 
-Since `.env` is never uploaded to GitHub, add your key as a secret:
-
-1. Go to your repo → **Settings → Secrets and variables → Actions**
-2. Click **New repository secret**
-3. Name: `REACT_APP_GROQ_KEY`
-4. Value: your actual `gsk_...` key
-5. Click **Add secret**
-
-### 4. Create `.github/workflows/deploy.yml`
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build
-        run: npm run build
-        env:
-          REACT_APP_GROQ_KEY: ${{ secrets.REACT_APP_GROQ_KEY }}
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-```
-
-### 5. Deploy
-```bash
-npm run deploy
-```
-
-Your app goes live at `https://YOUR_USERNAME.github.io/meeting-assistant` 🎉
+1. Go to [render.com](https://render.com) → New Web Service
+2. Connect your GitHub repo
+3. Settings:
+   - **Root Directory:** `backend`
+   - **Runtime:** `Python`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `gunicorn app:app --timeout 120 --workers 2`
+4. Add environment variables:
+   - `GROQ_API_KEY` → your Groq key
+   - `MONGO_URI` → your MongoDB URI
 
 ---
 
@@ -312,11 +225,13 @@ Your app goes live at `https://YOUR_USERNAME.github.io/meeting-assistant` 🎉
 
 | Error | Fix |
 |---|---|
-| `REACT_APP_GROQ_KEY is undefined` | Make sure `.env` is in the root folder, not inside `src/`. Restart `npm start` after editing it. |
-| `401 Unauthorized` | Wrong API key. Go to console.groq.com, create a new key and paste it carefully. |
-| `400 Bad Request` | Model name is wrong. Make sure it says exactly `llama-3.1-8b-instant`. |
-| JSON parse error | The model added extra text around JSON. The `replace()` call in the code handles this — make sure it's there. |
-| App works locally but not on GitHub Pages | Your `.env` file isn't uploaded. Use the GitHub Secrets + Actions workflow above. |
+| `Processing failed` | Make sure Flask backend is running at `localhost:5001` |
+| `401 Unauthorized` | Wrong Groq API key in `backend/.env` |
+| `MongoDB SSL error` | Add `0.0.0.0/0` to MongoDB Atlas Network Access |
+| `CORS error` | Make sure `flask-cors` is installed and `CORS(app)` is in `app.py` |
+| `Gunicorn timeout` | Add `--timeout 120` to the start command in Procfile |
+| `REACT_APP_API_BASE undefined` | Restart `npm start` after editing `.env` |
+| App works locally but not on live site | Update `REACT_APP_API_BASE` GitHub Secret to your Render URL |
 
 ---
 
@@ -324,10 +239,10 @@ Your app goes live at `https://YOUR_USERNAME.github.io/meeting-assistant` 🎉
 
 | Criterion | Implementation |
 |---|---|
-| **Functionality (35%)** | All 4 core features + 4/4 bonus features (chat, history, export, free LLM) |
+| **Functionality (35%)** | All 4 core features + 4/4 bonus features (chat, persistent history, export, free LLM) |
 | **UI/UX (25%)** | Dark editorial theme, stat cards, tabbed panels, avatars, drag-and-drop |
 | **LLM Prompt Design (25%)** | Strict JSON schema, explicit extraction rules, separate system prompts per task |
-| **Code Quality (15%)** | Component decomposition, error handling, loading states, consistent design tokens |
+| **Code Quality (15%)** | Component decomposition, Flask blueprints, MongoDB models, error handling, CI/CD |
 
 ---
 
